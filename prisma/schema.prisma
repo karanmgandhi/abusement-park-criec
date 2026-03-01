@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  image     String?
+  balance   Int      @default(5000)
+  createdAt DateTime @default(now())
+
+  bets         Bet[]
+  groups       GroupMember[]
+  questions    Question[]
+  chatMessages ChatMessage[]
+}
+
+model Group {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  password  String?
+  createdAt DateTime @default(now())
+
+  members  GroupMember[]
+  matches  Match[]
+  messages ChatMessage[]
+}
+
+model GroupMember {
+  id      String @id @default(cuid())
+  userId  String
+  groupId String
+  role    String @default("member")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+}
+
+model Match {
+  id           String   @id @default(cuid())
+  externalId   String?
+  team1        String
+  team2        String
+  team1Short   String   @default("")
+  team2Short   String   @default("")
+  team1Flag    String   @default("")
+  team2Flag    String   @default("")
+  venue        String?
+  startTime    DateTime
+  status       String   @default("upcoming")
+  team1Score   String?
+  team2Score   String?
+  currentPhase String   @default("pre_match")
+  liveData     String?
+  result       String?
+  groupId      String
+
+  group     Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  questions Question[]
+}
+
+model Question {
+  id            String    @id @default(cuid())
+  matchId       String
+  text          String
+  type          String
+  options       String
+  weight        Int
+  phase         String
+  status        String    @default("open")
+  correctAnswer String?
+  totalPot      Int       @default(0)
+  isCustom      Boolean   @default(false)
+  createdById   String?
+  createdAt     DateTime  @default(now())
+  resolvedAt    DateTime?
+
+  match     Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  createdBy User?  @relation(fields: [createdById], references: [id])
+  bets      Bet[]
+}
+
+model Bet {
+  id         String   @id @default(cuid())
+  userId     String
+  questionId String
+  answer     String
+  amount     Int
+  payout     Int      @default(0)
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  content   String
+  userId    String
+  groupId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
